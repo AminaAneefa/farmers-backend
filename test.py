@@ -1,30 +1,28 @@
-from flask import Flask, render_template, session, request, redirect, jsonify,url_for
+from flask import Flask, render_template, session, request, redirect, jsonify, url_for
 from pymongo import MongoClient
 from flask_cors import CORS
-
-
+from dotenv import load_dotenv
+import os
 
 # Load environment variables from .env
-
-
+load_dotenv()
 
 #intialise the Flask app
 app = Flask(__name__)
-CORS(app, resources={r"/": {"origins": ""}})
-app.secret_key = "123456" # Use the secret key from environment variables
+CORS(app, resources={r"/*": {"origins": "*"}})
+app.secret_key = "SECRET_KEY" # Use the secret key from environment variables
 
 #connecting to the database
-client = MongoClient(
-"mongodb+srv://admin:admin@cluster0.ogtevdm.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0") 
+client = MongoClient("https://farmers-backend-ny58.onrender.com/login")  # Use the MongoDB URI from environment variables
 try:
     client.admin.command('ping')
     print("Pinged your deployment. You successfully connected to MongoDB!")
 except Exception as e:
     print(e)
 
-
 db = client['MyDatabase']  # Change 'MyDatabase' to your actual database name
 users_collection = db['users']  # Change 'users' to your actual collection name
+messages_collection = db['messages']  # Change 'messages' to your actual collection name
 
 @app.route("/login", methods=['POST'])
 def login():
@@ -35,18 +33,10 @@ def login():
     if user and user['pass'] == password:
         session['user'] = user['email']
         return jsonify({'status': 200, 'user_email': session['user']})
-
     else:
         return jsonify({'error': 'Invalid email or password'})
 
-# @app.route("/dashboard")
-# def dashboard():
-#     if 'user' in session:
-#         return 'Welcome to the dashboard, {}'.format(session['user'])
-#     else:
-#         return redirect(url_for('home'))
-    
-@app.route("/register",methods=['POST'])
+@app.route("/register", methods=['POST'])
 def create_user():
     # Check if request contains all required fields
     if 'name' not in request.json or 'email' not in request.json or 'pass' not in request.json:
@@ -60,30 +50,34 @@ def create_user():
     
     # Check if a user with the same email already exists
     existing_user = users_collection.find_one({'email': new_user['email']})
+    
     if existing_user:
-        return jsonify({'error': 'User with this email already exists'}), 409
+        return jsonify({'error': 'User with this email already exists'}), 400
 
     # Insert the new user into the database
-    result = users_collection.insert_one(new_user)
-    return jsonify({'id': str(result.inserted_id), 'msg': 'User created'}), 201
+    users_collection.insert_one(new_user)
+    
+    return jsonify({'status': 'User created successfully'})
 
-@app.route("/users")
-def get_users():
-    users = []
-    for user in users_collection.find():
-        users.append({
-            'id': str(user['_id']),
-            'name': user['name'],
-            'email': user['email'],
-            'pass':user['pass']
-            # Assuming your password field is named 'pass'
-        })
-    return jsonify(users)
+@app.route("/send-message", methods=['POST'])
+def send_message():
+    # Check if request contains all required fields
+    if 'full_name' not in request.json or 'email' not in request.json or 'subject' not in request.json or 'phone_number' not in request.json or 'message' not in request.json:
+        return jsonify({'error': 'Incomplete fields in the request'}), 400
+
+    new_message = {
+        'full_name': request.json['full_name'],
+        'email': request.json['email'],
+        'subject': request.json['subject'],
+        'phone_number': request.json['phone_number'],
+        'message': request.json['message']
+    }
+    
+    # Insert the new message into the database
+    messages_collection.insert_one(new_message)
+    
+    return jsonify({'status': 'Message sent successfully'})
 
 
-
-if __name__ == '_main_':
+if __name__ == '__main__':
     app.run(debug=True)
-
-
-
