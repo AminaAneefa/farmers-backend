@@ -13,7 +13,7 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 app.secret_key = "SECRET_KEY" # Use the secret key from environment variables
 
 #connecting to the database
-client = MongoClient("https://farmers-backend-ny58.onrender.com/login")  # Use the MongoDB URI from environment variables
+client = MongoClient("mongodb+srv://admin:admin@cluster0.ogtevdm.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")  # Use the MongoDB URI from environment variables
 try:
     client.admin.command('ping')
     print("Pinged your deployment. You successfully connected to MongoDB!")
